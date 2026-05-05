@@ -12,12 +12,12 @@ interrupt: true
 StartTaskMode: true
 # 具体处理时选择的模块
 selected_module:
-  Recorder: WebSocketRecorder
+  Recorder: RecorderPyAudio
   ASR: FunASR
   VAD: SileroVAD
   LLM: OpenAILLM
   TTS: KOKOROTTS
-  Player: WebSocketPlayer
+  Player: PyaudioPlayer
 
 Recorder:
   RecorderPyAudio:
@@ -28,7 +28,7 @@ Recorder:
 
 ASR:
   FunASR:
-    model_dir: FunAudioLLM/SenseVoiceSmall
+    model_dir: models/SenseVoiceSmall
     output_file: tmp/
 
 VAD:
@@ -40,12 +40,12 @@ VAD:
 LLM:
   OpenAILLM:
     model_name: deepseek-chat
-    url: https://api.deepseek.com
-    api_key:
+    url: http://127.0.0.1:8080
+    api_key: 12345
   OllamaLLM:
     model_name: qwen-chat
-    url: http://localhost:11434/api/chat # 注意后缀是api/chat
-    api_key:
+    url: http://127.0.0.1:8080 # 注意后缀是api/chat
+    api_key: 12345
 
 
 TTS:
@@ -66,7 +66,7 @@ TTS:
     output_file: tmp/
     lang: z
     voice: zf_001
-    repo_id: hexgrad/Kokoro-82M-v1.1-zh
+    repo_id: models/ckpts/kokoro-v1.1
 
 Player:
   PygameSoundPlayer: null
@@ -79,15 +79,15 @@ Rag:
   doc_path: documents/
   emb_model: models/bge-small-zh
   model_name: deepseek-chat
-  url: https://api.deepseek.com
-  api_key: null
+  url: http://127.0.0.1:8080
+  api_key: 12345
 
 Memory:
   dialogue_history_path: tmp/
   memory_file: tmp/memory.json
   model_name: deepseek-chat
-  url: https://api.deepseek.com
-  api_key: null
+  url: http://127.0.0.1:8080
+  api_key: 12345
 
 TaskManager:
   functions_call_name: plugins/function_calls_config.json

@@ -8,13 +8,10 @@ import warnings
 import requests
 from bs4 import BeautifulSoup
 from cachetools import TTLCache
-from duckduckgo_search import AsyncDDGS, DDGS
+from duckduckgo_search import DDGS
 
 from plugins.registry import register_function, ToolType
 from plugins.registry import ActionResponse, Action
-
-
-from duckduckgo_search import DDGS
 
 class BaseSearch:
 
@@ -68,8 +65,11 @@ class DuckDuckGoSearch(BaseSearch):
     async def asearch(self, query: str, max_retry: int = 3) -> dict:
         for attempt in range(max_retry):
             try:
-                ddgs = AsyncDDGS(timeout=self.timeout, proxy=self.proxy)
-                response = await ddgs.text(query.strip("'"), max_results=10)
+                ddgs = DDGS(timeout=self.timeout, proxy=self.proxy)
+                # Use asyncio.to_thread to run synchronous DDGS in async context
+                response = await asyncio.to_thread(
+                    ddgs.text, query.strip("'"), max_results=10
+                )
                 return self._parse_response(response)
             except Exception as e:
                 if isinstance(e, asyncio.TimeoutError):

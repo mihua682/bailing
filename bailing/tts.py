@@ -203,7 +203,7 @@ class KOKOROTTS(AbstractTTS):
     def __init__(self, config):
         """
         config keys:
-          - repo_id: HuggingFace repo ID for Kokoro model (e.g. 'hexgrad/Kokoro-82M-v1.1-zh')
+          - repo_id: HuggingFace repo ID or local model path (e.g. 'hexgrad/Kokoro-82M-v1.1-zh' or 'models/ckpts/kokoro-v1.1')
           - lang:      'z' for Chinese, 'a' for multilingual/IPA fallback
           - voice:     e.g. 'zf_001' or 'zm_010'
           - output_dir: directory to write wav files to
@@ -219,15 +219,37 @@ class KOKOROTTS(AbstractTTS):
         # device selection
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
+        # Check if repo_id is a local path
+        is_local_path = os.path.exists(self.repo_id)
+        
         # load model if Chinese TTS
         self.model = None
         if self.lang == "z":
-            self.model = KModel(repo_id=self.repo_id).to(self.device).eval()
+            if is_local_path:
+                # Use local model files
+                config_path = os.path.join(self.repo_id, 'config.json')
+                model_path = os.path.join(self.repo_id, 'kokoro-v1_1-zh.pth')
+                if not os.path.exists(model_path):
+                    # Try to find any .pth file
+                    pth_files = [f for f in os.listdir(self.repo_id) if f.endswith('.pth')]
+                    if pth_files:
+                        model_path = os.path.join(self.repo_id, pth_files[0])
+                    else:
+                        raise FileNotFoundError(f"No model file (.pth) found in {self.repo_id}")
+                
+                logger.info(f"Loading Kokoro model from local path: {model_path}")
+                self.model = KModel(config=config_path, model=model_path).to(self.device).eval()
+            else:
+                # Use HuggingFace repo
+                self.model = KModel(repo_id=self.repo_id).to(self.device).eval()
 
         # set up pipelines
         self._setup_pipelines()
 
     def _setup_pipelines(self):
+        # Check if repo_id is a local path
+        is_local_path = os.path.exists(self.repo_id)
+        
         # English/IPA fallback pipeline
         self.en_pipeline = KPipeline(
             lang_code="a", repo_id=self.repo_id, model=False
@@ -249,6 +271,22 @@ class KOKOROTTS(AbstractTTS):
             model=self.model,
             en_callable=self.en_callable
         )
+        
+        # If using local path, preload the voice from local directory
+        if is_local_path and self.lang == "z":
+            voices_dir = os.path.join(self.repo_id, 'voices')
+            if os.path.exists(voices_dir):
+                # Pre-load all voices from local directory
+                for voice_file in os.listdir(voices_dir):
+                    if voice_file.endswith('.pt'):
+                        voice_name = voice_file[:-3]  # Remove .pt extension
+                        voice_path = os.path.join(voices_dir, voice_file)
+                        try:
+                            pack = torch.load(voice_path, weights_only=True, map_location='cpu')
+                            self.pipeline.voices[voice_name] = pack
+                            logger.debug(f"Pre-loaded voice: {voice_name}")
+                        except Exception as e:
+                            logger.warning(f"Failed to load voice {voice_name}: {e}")
 
     def _generate_filename(self, extension=".wav"):
         fname = f"tts-{datetime.now().date()}@{uuid.uuid4().hex}{extension}"

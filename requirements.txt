@@ -1,10 +1,10 @@
-chattts==0.1.1
+chattts
 edge_tts==6.1.12
 Flask==3.0.3
 Flask_SocketIO==5.3.7
 funasr==1.1.6
 gTTS==2.5.3
-numpy==1.26.4
+numpy
 openai==1.97.0
 PyAudio==0.2.14
 pydub==0.25.1
