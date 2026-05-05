@@ -6,14 +6,24 @@ import threading
 import wave
 import pyaudio
 import json
-from pydub import  AudioSegment
+from pydub import AudioSegment
 import pygame
 import sounddevice as sd
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import asyncio
+import os
 
 logger = logging.getLogger(__name__)
+
+# 配置 FFmpeg shared build 路径
+ffmpeg_path = r"D:\install\ffmpeg-n6.1.2-11-g7d79d0a43b-win64-gpl-shared-6.1\bin"
+ffmpeg_exe = os.path.join(ffmpeg_path, "ffmpeg.exe")
+if os.path.exists(ffmpeg_exe):
+    AudioSegment.converter = ffmpeg_exe
+    logger.info(f"FFmpeg configured at: {ffmpeg_exe}")
+else:
+    logger.warning(f"FFmpeg not found at {ffmpeg_exe}. Audio conversion may fail.")
 
 
 class AbstractPlayer(object):

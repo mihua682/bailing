@@ -123,8 +123,20 @@ class EdgeTTS(AbstractTTS):
 class CHATTTS(AbstractTTS):
     def __init__(self, config):
         self.output_file = config.get("output_file", ".")
+        model_path = config.get("model_dir", "models/ChatTTS")
         self.chat = ChatTTS.Chat()
-        self.chat.load(compile=False)  # Set to True for better performance
+        
+        # 从本地加载模型
+        logger.info(f"Loading ChatTTS model from local path: {model_path}")
+        loaded = self.chat.load(
+            source="custom",
+            custom_path=model_path,
+            compile=False
+        )
+        
+        if not loaded:
+            raise RuntimeError(f"ChatTTS failed to load models from {model_path}")
+        
         self.rand_spk = self.chat.sample_random_speaker()
 
     def _generate_filename(self, extension=".wav"):

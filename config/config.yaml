@@ -2,7 +2,7 @@ name: 百聆（bailing）
 version: 1.0
 
 logging:
-  level: debug
+  level: info
 
 # 唤醒词
 WakeWord: 百聆
@@ -16,7 +16,7 @@ selected_module:
   ASR: FunASR
   VAD: SileroVAD
   LLM: OpenAILLM
-  TTS: KOKOROTTS
+  TTS: CHATTTS
   Player: PyaudioPlayer
 
 Recorder:
@@ -62,6 +62,7 @@ TTS:
     output_file: tmp/
   CHATTTS:
     output_file: tmp/
+    model_dir: models/CHATTTS
   KOKOROTTS:
     output_file: tmp/
     lang: z

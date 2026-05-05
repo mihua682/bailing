@@ -24,6 +24,27 @@ for stream in (sys.stdout, sys.stderr):
 # Chroma telemetry 错误日志压制
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 logging.getLogger('chromadb.telemetry.product.posthog').setLevel(logging.CRITICAL)
+
+# 添加 FFmpeg shared build 到 PATH，解决 torio 加载 FFmpeg 扩展的问题
+# 必须在导入 torch/torchaudio 之前设置
+ffmpeg_bin_path = r"D:\install\ffmpeg-n6.1.2-11-g7d79d0a43b-win64-gpl-shared-6.1\bin"
+if os.path.exists(ffmpeg_bin_path):
+    # 添加到环境变量 PATH
+    current_path = os.environ.get("PATH", "")
+    if ffmpeg_bin_path not in current_path:
+        os.environ["PATH"] = ffmpeg_bin_path + os.pathsep + current_path
+        logging.debug(f"Added FFmpeg to PATH: {ffmpeg_bin_path}")
+    
+    # Windows: 同时添加到 DLL 搜索路径
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetDllDirectoryW(ffmpeg_bin_path)
+        logging.debug(f"Added FFmpeg to DLL search path: {ffmpeg_bin_path}")
+    except Exception as e:
+        logging.warning(f"Failed to set DLL directory: {e}")
+else:
+    logging.warning(f"FFmpeg path does not exist: {ffmpeg_bin_path}")
+
 from bailing import robot
 # 获取根 logger
 logger = logging.getLogger(__name__)
