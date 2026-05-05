@@ -22,7 +22,7 @@ class AbstractPlayer(object):
         self.is_playing = False
         self.play_queue = queue.Queue()
         self._stop_event = threading.Event()
-        self.consumer_thread = threading.Thread(target=self._playing)
+        self.consumer_thread = threading.Thread(target=self._playing, daemon=True)
         self.consumer_thread.start()
 
     @staticmethod
@@ -34,15 +34,18 @@ class AbstractPlayer(object):
 
     def _playing(self):
         while not self._stop_event.is_set():
-            data = self.play_queue.get()
-            self.is_playing = True
             try:
-                self.do_playing(data)
-            except Exception as e:
-                logger.error(f"播放音频失败: {e}")
-            finally:
-                self.play_queue.task_done()
-                self.is_playing = False
+                data = self.play_queue.get(timeout=0.2)
+                self.is_playing = True
+                try:
+                    self.do_playing(data)
+                except Exception as e:
+                    logger.error(f"播放音频失败: {e}")
+                finally:
+                    self.play_queue.task_done()
+                    self.is_playing = False
+            except queue.Empty:
+                continue
 
     def play(self, data):
         logger.info(f"play file {data}")
@@ -56,7 +59,7 @@ class AbstractPlayer(object):
         self._clear_queue()
         self._stop_event.set()
         if self.consumer_thread.is_alive():
-            self.consumer_thread.join()
+            self.consumer_thread.join(timeout=2.0)
 
     def get_playing_status(self):
         """正在播放和队列非空，为正在播放状态"""

@@ -1,6 +1,8 @@
 import argparse
 import json
 import logging
+import os
+import sys
 import requests
 
 
@@ -10,9 +12,18 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),  # 控制台输出
-        logging.FileHandler('tmp/bailing.log')  # 文件输出
+        logging.FileHandler('tmp/bailing.log', encoding='utf-8')  # 文件输出
     ]
 )
+
+# Windows GBK 控制台日志编码错误修复
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
+
+# Chroma telemetry 错误日志压制
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
+logging.getLogger('chromadb.telemetry.product.posthog').setLevel(logging.CRITICAL)
 from bailing import robot
 # 获取根 logger
 logger = logging.getLogger(__name__)
@@ -58,3 +69,7 @@ if __name__ == "__main__":
     robot = robot.Robot(config_path)
     robot.listen_dialogue(push2web)
     robot.run()
+    
+    # 确保程序退出
+    logging.shutdown()
+    os._exit(0)

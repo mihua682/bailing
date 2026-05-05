@@ -52,7 +52,7 @@ class RecorderPyAudio(AbstractRecorder):
             finally:
                 self.stop_recording()
 
-        self.thread = threading.Thread(target=stream_thread)
+        self.thread = threading.Thread(target=stream_thread, daemon=True)
         self.thread.start()
 
     def stop_recording(self):
@@ -69,7 +69,7 @@ class RecorderPyAudio(AbstractRecorder):
             self.py_audio.terminate()
 
         if self.thread:
-            self.thread.join()
+            self.thread.join(timeout=2.0)
             self.thread = None
 
     def __del__(self):

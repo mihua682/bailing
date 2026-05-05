@@ -54,13 +54,14 @@ class TaskManager:
         # 初始化线程池
         self.task_executor = ThreadPoolExecutor(max_workers=10)
         self.result_queue = result_queue
+        self._stop_event = threading.Event()
 
     def get_functions(self):
         return self.functions
 
     def process_task(self):
         def task_thread():
-            while True:
+            while not self._stop_event.is_set():
                 try:
                     # 从队列中取出已完成的任务
                     while not self.task_queue.empty():
@@ -76,6 +77,20 @@ class TaskManager:
                 time.sleep(2)
         consumer_task = threading.Thread(target=task_thread, daemon=True)
         consumer_task.start()
+
+    def shutdown(self):
+        """关闭 TaskManager"""
+        logger.info("Shutting down TaskManager...")
+        self._stop_event.set()
+        # 关闭内部线程池
+        self.task_executor.shutdown(wait=False, cancel_futures=True)
+        # 调用 schedule_task 的 scheduler.shutdown()
+        try:
+            from plugins.functions import schedule_task
+            if hasattr(schedule_task, 'scheduler'):
+                schedule_task.scheduler.shutdown()
+        except Exception as e:
+            logger.error(f"Failed to shutdown schedule_task: {e}")
 
     @staticmethod
     def call_function(func_name, *args, **kwargs):

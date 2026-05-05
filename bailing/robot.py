@@ -109,9 +109,11 @@ class Robot(ABC):
         def vad_thread():
             while not self.stop_event.is_set():
                 try:
-                    data = self.audio_queue.get()
+                    data = self.audio_queue.get(timeout=0.5)
                     vad_statue = self.vad.is_vad(data)
                     self.vad_queue.put({"voice": data, "vad_statue": vad_statue})
+                except queue.Empty:
+                    continue
                 except Exception as e:
                     logger.error(f"VAD 处理出错: {e}")
         consumer_audio = threading.Thread(target=vad_thread, daemon=True)
@@ -121,7 +123,7 @@ class Robot(ABC):
         def priority_thread():
             while not self.stop_event.is_set():
                 try:
-                    future = self.tts_queue.get()
+                    future = self.tts_queue.get(timeout=0.5)
                     try:
                         tts_file = future.result(timeout=10)
                     except TimeoutError:
@@ -133,6 +135,8 @@ class Robot(ABC):
                     if tts_file is None:
                         continue
                     self.player.play(tts_file)
+                except queue.Empty:
+                    continue
                 except Exception as e:
                     logger.error(f"tts_priority priority_thread: {e}")
         tts_priority = threading.Thread(target=priority_thread, daemon=True)
@@ -147,9 +151,14 @@ class Robot(ABC):
         """关闭所有资源，确保程序安全退出"""
         logger.info("Shutting down Robot...")
         self.stop_event.set()
-        self.executor.shutdown(wait=True)
+        # 先关闭 recorder 和 player
         self.recorder.stop_recording()
         self.player.shutdown()
+        # 关闭 task_manager
+        if hasattr(self, 'task_manager'):
+            self.task_manager.shutdown()
+        # 关闭线程池，不等待正在执行的任务
+        self.executor.shutdown(wait=False, cancel_futures=True)
         logger.info("Shutdown complete.")
 
     def start_recording_and_vad(self):

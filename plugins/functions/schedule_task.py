@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class TaskScheduler:
     def __init__(self):
         self.tasks = {}
+        self.stop_event = threading.Event()
 
     def schedule_task(self, task_id, time_str, content):
         """创建一个定时任务"""
@@ -40,13 +41,19 @@ class TaskScheduler:
 
     def run_scheduler(self):
         """运行任务调度器"""
-        while True:
+        while not self.stop_event.is_set():
             schedule.run_pending()
             time.sleep(1)
+    
+    def shutdown(self):
+        """关闭调度器"""
+        logger.info("Shutting down TaskScheduler...")
+        self.stop_event.set()
+        schedule.clear()
 
 
 scheduler = TaskScheduler()
-scheduler_thread = threading.Thread(target=scheduler.run_scheduler)
+scheduler_thread = threading.Thread(target=scheduler.run_scheduler, daemon=True)
 scheduler_thread.start()
 
 
