@@ -49,7 +49,11 @@ class AbstractPlayer(object):
 
     def play(self, data):
         logger.info(f"play file {data}")
-        audio_file = self.to_wav(data)
+        # 如果已经是 wav 文件，直接使用；否则转换
+        if data.lower().endswith('.wav'):
+            audio_file = data
+        else:
+            audio_file = self.to_wav(data)
         self.play_queue.put(audio_file)
 
     def stop(self):
@@ -99,6 +103,7 @@ class PyaudioPlayer(AbstractPlayer):
 
     def do_playing(self, audio_file):
         chunk = 1024
+        stream = None
         try:
             with wave.open(audio_file, 'rb') as wf:
                 stream = self.p.open(format=self.p.get_format_from_width(wf.getsampwidth()),
@@ -106,19 +111,34 @@ class PyaudioPlayer(AbstractPlayer):
                                      rate=wf.getframerate(),
                                      output=True)
                 data = wf.readframes(chunk)
-                while data:
+                while data and not self._stop_event.is_set():
                     stream.write(data)
                     data = wf.readframes(chunk)
-                stream.stop_stream()
-                stream.close()
             logger.debug(f"播放完成：{audio_file}")
         except Exception as e:
             logger.error(f"播放音频失败: {e}")
+        finally:
+            if stream:
+                try:
+                    stream.stop_stream()
+                    stream.close()
+                except:
+                    pass
 
     def stop(self):
+        """停止当前播放，但不终止 PyAudio 实例"""
         super().stop()
+        # 注意：不要调用 self.p.terminate()，否则无法再次播放
+        # terminate() 只在 shutdown() 或 __del__ 中调用
+    
+    def shutdown(self):
+        """关闭播放器并释放 PyAudio 资源"""
+        super().shutdown()
         if self.p:
-            self.p.terminate()
+            try:
+                self.p.terminate()
+            except:
+                pass
 
 
 class PygamePlayer(AbstractPlayer):
